@@ -20,89 +20,144 @@ export default class TransactionsController {
             'products'
         ])
 
-        let total = 0
-        // 1. Cálculo do total
-        for (const item of products) {
-
-            const product = await Product.findOrFail(item.product_id)
-
-            total += product.amount * item.quantity
+        // Validação básica
+        if (!products || products.length === 0) {
+            return response.badRequest({
+                message: 'Products are required'
+            })
         }
-        // 2. Garante o cliente no banco
-        const client = await Client.firstOrCreate(
-            { email },
-            { name, email }
-        )
 
-        const paymentService = new PaymentService()
-        // 3. Processa o pagamento via Service (Failover interno)
-        const payment = await paymentService.processPayment({
-            amount: total,
-            name,
-            email,
-            cardNumber,
-            cvv
-        })
-        // 4. Cria a transação (Ajustado de 'gateway' para 'gatewayId')
-        const gateway = await Gateway
-            .query()
-            .where('name', payment.gateway)
-            .firstOrFail()
+        if (!name || !email || !cardNumber || !cvv) {
+            return response.badRequest({
+                message: 'Missing required fields'
+            })
+        }
 
-        const transaction = await Transaction.create({
-            clientId: client.id,
-            gatewayId: gateway.id,
-            externalId: payment.response.id,
-            status: 'success',
-            amount: total,
-            cardLastNumbers: cardNumber.slice(-4)
-        })
-        // 5. Registra os produtos da transação
-        for (const item of products) {
+        let total = 0
 
-            await TransactionProduct.create({
-                transactionId: transaction.id,
-                productId: item.product_id,
-                quantity: item.quantity
+        try {
+
+            // Cálculo do total
+            for (const item of products) {
+                const product = await Product.findOrFail(item.product_id)
+                total += product.amount * item.quantity
+            }
+
+            // Garante o cliente no banco
+            const client = await Client.firstOrCreate(
+                { email },
+                { name, email }
+            )
+
+            const paymentService = new PaymentService()
+
+            // Processa o pagamento
+            const payment = await paymentService.processPayment({
+                amount: total,
+                name,
+                email,
+                cardNumber,
+                cvv
+            })
+
+            console.log('Gateway used:', payment.gateway)
+            console.log('External transaction id:', payment.response.id)
+
+            // Busca o gateway usado
+            const gateway = await Gateway
+                .query()
+                .where('name', payment.gateway)
+                .firstOrFail()
+
+            // Cria a transação
+            const transaction = await Transaction.create({
+                clientId: client.id,
+                gatewayId: gateway.id,
+                externalId: payment.response.id,
+                status: 'success',
+                amount: total,
+                cardLastNumbers: cardNumber.slice(-4)
+            })
+
+            // Registra os produtos da transação
+            for (const item of products) {
+                await TransactionProduct.create({
+                    transactionId: transaction.id,
+                    productId: item.product_id,
+                    quantity: item.quantity
+                })
+            }
+
+            return response.ok({
+                message: 'Payment successful',
+                transaction
+            })
+
+        } catch (error) {
+
+            console.error('Payment error:', error)
+
+            return response.status(500).send({
+                message: 'Payment failed',
+                error: error.message
             })
 
         }
-
-        return response.ok({
-            message: 'Payment successful',
-            transaction
-        })
 
     }
 
     async refund({ params, response }: HttpContext) {
 
-        const transaction = await Transaction.findOrFail(params.id)
+        try {
 
-        const gateway = await Gateway.findOrFail(transaction.gatewayId)
+            const transaction = await Transaction.findOrFail(params.id)
 
-        let service
+            // Bloquear refund duplicado
+            if (transaction.status === 'refunded') {
+                return response.badRequest({
+                    message: 'Transaction already refunded'
+                })
+            }
 
-        if (gateway.name === 'gateway1') {
-            service = new Gateway1Service()
+            const gateway = await Gateway.findOrFail(transaction.gatewayId)
+
+            let service
+
+            if (gateway.name === 'gateway1') {
+                service = new Gateway1Service()
+            }
+
+            if (gateway.name === 'gateway2') {
+                service = new Gateway2Service()
+            }
+
+            if (!service) {
+                return response.badRequest({
+                    message: 'Gateway not supported'
+                })
+            }
+
+            // Executa refund no gateway
+            await service.refundTransaction(transaction.externalId)
+
+            // Atualiza status
+            transaction.status = 'refunded'
+            await transaction.save()
+
+            return response.ok({
+                message: 'Refund successful'
+            })
+
+        } catch (error) {
+
+            console.error('Refund error:', error)
+
+            return response.status(500).send({
+                message: 'Refund failed',
+                error: error.message
+            })
+
         }
-
-        if (gateway.name === 'gateway2') {
-            service = new Gateway2Service()
-        }
-
-        if (!service) {
-            return response.badRequest({ message: 'Gateway not supported' })
-        }
-
-        await service.refundTransaction(transaction.externalId)
-
-        transaction.status = 'refunded'
-        await transaction.save()
-
-        return response.ok({
-            message: 'Refund successful'
-        })
 
     }
 
