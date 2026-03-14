@@ -1,4 +1,17 @@
-import { TransactionProductSchema } from '#database/schema'
+import { BaseModel, column } from '@adonisjs/lucid/orm'
 
-export default class TransactionProduct extends TransactionProductSchema {
+export default class TransactionProduct extends BaseModel {
+
+    @column({ isPrimary: true })
+    declare id: number
+
+    @column()
+    declare transactionId: number
+
+    @column()
+    declare productId: number
+
+    @column()
+    declare quantity: number
+
 }
