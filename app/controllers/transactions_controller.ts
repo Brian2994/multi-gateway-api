@@ -5,6 +5,8 @@ import Transaction from '#models/transaction'
 import TransactionProduct from '#models/transaction_product'
 import PaymentService from '#services/payment_service'
 import Gateway from '#models/gateway'
+import Gateway1Service from '#gateways/gateway1_service'
+import Gateway2Service from '#gateways/gateway2_service'
 
 export default class TransactionsController {
 
@@ -69,6 +71,37 @@ export default class TransactionsController {
         return response.ok({
             message: 'Payment successful',
             transaction
+        })
+
+    }
+
+    async refund({ params, response }: HttpContext) {
+
+        const transaction = await Transaction.findOrFail(params.id)
+
+        const gateway = await Gateway.findOrFail(transaction.gatewayId)
+
+        let service
+
+        if (gateway.name === 'gateway1') {
+            service = new Gateway1Service()
+        }
+
+        if (gateway.name === 'gateway2') {
+            service = new Gateway2Service()
+        }
+
+        if (!service) {
+            return response.badRequest({ message: 'Gateway not supported' })
+        }
+
+        await service.refundTransaction(transaction.externalId)
+
+        transaction.status = 'refunded'
+        await transaction.save()
+
+        return response.ok({
+            message: 'Refund successful'
         })
 
     }
