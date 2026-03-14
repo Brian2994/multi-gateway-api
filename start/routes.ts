@@ -11,6 +11,8 @@ import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 
+import TransactionsController from '#controllers/transactions_controller'
+
 router.get('/', () => {
   return { hello: 'world' }
 })
@@ -33,5 +35,7 @@ router
       .prefix('account')
       .as('profile')
       .use(middleware.auth())
+
+    router.post('/purchase', [TransactionsController, 'purchase'])
   })
   .prefix('/api/v1')
