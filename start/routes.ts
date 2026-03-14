@@ -37,5 +37,7 @@ router
       .use(middleware.auth())
 
     router.post('/purchase', [TransactionsController, 'purchase'])
+
+    router.post('/refund/:id', [TransactionsController, 'refund'])
   })
   .prefix('/api/v1')
