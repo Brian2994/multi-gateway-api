@@ -12,13 +12,24 @@ export default class TransactionsController {
 
     async purchase({ request, response }: HttpContext) {
 
+        type ProductInput = {
+            product_id: number
+            quantity: number
+        }
+
         const { name, email, cardNumber, cvv, products } = request.only([
             'name',
             'email',
             'cardNumber',
             'cvv',
             'products'
-        ])
+        ]) as {
+            name: string
+            email: string
+            cardNumber: string
+            cvv: string
+            products: ProductInput[]
+        }
 
         // Validação básica
         if (!products || products.length === 0) {
@@ -38,8 +49,22 @@ export default class TransactionsController {
         try {
 
             // Cálculo do total
+            const productIds = products.map((p: any) => p.product_id)
+
+            const dbProducts = await Product
+                .query()
+                .whereIn('id', productIds)
+
             for (const item of products) {
-                const product = await Product.findOrFail(item.product_id)
+
+                const product = dbProducts.find(p => p.id === item.product_id)
+
+                if (!product) {
+                    return response.badRequest({
+                        message: `Product ${item.product_id} not found`
+                    })
+                }
+
                 total += product.amount * item.quantity
             }
 

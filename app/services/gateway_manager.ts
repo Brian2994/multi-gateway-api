@@ -4,34 +4,36 @@ import GatewayInterface from '#gateways/gateway_interface'
 
 export default class GatewayManager {
 
+    static gateways: Record<string, GatewayInterface> = {
+        gateway1: new Gateway1Service(),
+        gateway2: new Gateway2Service()
+    }
+
     static async createTransaction(data: any) {
 
-        const gateways: { name: string, service: GatewayInterface }[] = [
-            { name: 'gateway1', service: new Gateway1Service() },
-            { name: 'gateway2', service: new Gateway2Service() }
-        ]
+        const gatewayEntries = Object.entries(this.gateways)
 
-        for (const gateway of gateways) {
+        for (const [name, service] of gatewayEntries) {
 
             try {
 
-                console.log(`Trying ${gateway.name}...`)
+                console.log(`Trying ${name}...`)
 
                 const response = await Promise.race([
-                    gateway.service.createTransaction(data),
+                    service.createTransaction(data),
                     this.timeout(5000)
                 ])
 
-                console.log(`${gateway.name} success`)
+                console.log(`${name} success`)
 
                 return {
-                    gateway: gateway.name,
+                    gateway: name,
                     response
                 }
 
             } catch (error) {
 
-                console.log(`${gateway.name} failed:`, error.message)
+                console.log(`${name} failed:`, error.message)
 
             }
 
