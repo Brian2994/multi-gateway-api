@@ -42,5 +42,7 @@ router
 
     router.get('/transactions', [TransactionsController, 'index'])
 
+    router.get('/transactions/:id', [TransactionsController, 'show'])
+
   })
   .prefix('/api/v1')

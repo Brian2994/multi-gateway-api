@@ -212,4 +212,30 @@ export default class TransactionsController {
         return response.ok(transactions)
     }
 
+    async show({ params, response }: HttpContext) {
+
+        try {
+
+            const transaction = await Transaction
+                .query()
+                .where('id', params.id)
+                .preload('client')
+                .preload('gateway')
+                .preload('products', (query) => {
+                    query.preload('product')
+                })
+                .firstOrFail()
+
+            return response.ok(transaction)
+
+        } catch (error) {
+
+            return response.status(404).send({
+                message: 'Transaction not found'
+            })
+
+        }
+
+    }
+
 }
