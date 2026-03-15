@@ -186,4 +186,30 @@ export default class TransactionsController {
 
     }
 
+    async index({ request, response }: HttpContext) {
+
+        const page = request.input('page', 1)
+        const status = request.input('status')
+        const clientId = request.input('client_id')
+
+        const query = Transaction
+            .query()
+            .preload('client')
+            .preload('gateway')
+
+        if (status) {
+            query.where('status', status)
+        }
+
+        if (clientId) {
+            query.where('clientId', clientId)
+        }
+
+        const transactions = await query
+            .orderBy('created_at', 'desc')
+            .paginate(page, 10)
+
+        return response.ok(transactions)
+    }
+
 }

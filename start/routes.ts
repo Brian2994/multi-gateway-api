@@ -39,5 +39,8 @@ router
     router.post('/purchase', [TransactionsController, 'purchase'])
 
     router.post('/refund/:id', [TransactionsController, 'refund'])
+
+    router.get('/transactions', [TransactionsController, 'index'])
+
   })
   .prefix('/api/v1')

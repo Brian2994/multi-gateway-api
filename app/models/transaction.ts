@@ -1,4 +1,8 @@
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
+import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+
+import Client from '#models/client'
+import Gateway from '#models/gateway'
 
 export default class Transaction extends BaseModel {
 
@@ -22,5 +26,11 @@ export default class Transaction extends BaseModel {
 
     @column()
     declare cardLastNumbers: string
+
+    @belongsTo(() => Client)
+    declare client: BelongsTo<typeof Client>
+
+    @belongsTo(() => Gateway)
+    declare gateway: BelongsTo<typeof Gateway>
 
 }
