@@ -14,7 +14,15 @@ import { controllers } from '#generated/controllers'
 import TransactionsController from '#controllers/transactions_controller'
 
 router.get('/', () => {
-  return { hello: 'world' }
+  return { Olá: 'Bem-vindo' }
+})
+
+router.get('/health', async () => {
+  return {
+    status: 'ok',
+    api: 'running',
+    timeStamp: new Date()
+  }
 })
 
 router
